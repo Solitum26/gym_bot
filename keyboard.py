@@ -18,12 +18,14 @@ muscular_menu_shoulders = KeyboardButton('/Плечи')
 muscular_menu_legs = KeyboardButton('/Ноги')
 muscular_menu_back = KeyboardButton('/Спина')
 
+list_of_muscular = [muscular_menu_back,
+                    muscular_menu_legs,
+                    muscular_menu_shoulders,
+                    muscular_menu_arms,
+                    muscular_menu_chest]
+
 muscular_menu = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True) \
-                .row(muscular_menu_back,
-                     muscular_menu_legs,
-                     muscular_menu_shoulders,
-                     muscular_menu_arms,
-                     muscular_menu_chest)
+                .row(*list_of_muscular)
 
 # меню упражнений спина
 back_ex_1 = KeyboardButton('/Тяга_верхного_блока')
@@ -37,6 +39,6 @@ back_menu = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True) \
                                 .row(*list_of_back)
 
 dictionary_of_menu = {'main_menu': main_menu,
-              'muscular_menu': muscular_menu,
-              'back_menu': back_menu}
+                      'muscular_menu': muscular_menu,
+                      'back_menu': back_menu}
 
