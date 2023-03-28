@@ -59,18 +59,17 @@ async def add_data_to_db(message: types.Message, state: FSMContext):
             if i != len(data['train_params']) - 1:
                 parsed_train_params += ', '
         parsed_train_params += '}'
-        print(parsed_train_params)
-        print(data['date'])
         cursor.execute(f"""
         INSERT INTO back_data (user_id, date, exercise, train_params)
         VALUES ({data['user_id']},
                 '{data['date']}', 
                 {Literal(data['name_exercise']).as_string(cursor)},
-           :     {f})""")
+                '{parsed_train_params}')""")
+        connection.commit()
         await message.answer(text=accepted_text, reply_markup=dictionary_of_menu['main_menu'])
         cursor.close()
+        connection.close()
     except Exception as e:
-        print(e)
         await message.answer(text='Ошибка')
 
 
