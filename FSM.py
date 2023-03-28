@@ -3,4 +3,5 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 
 
 class FSMUser(StatesGroup):
+    name_of_exs = State()
     data = State()
