@@ -6,4 +6,5 @@ connection = psycopg2.connect(
     user='postgres',
     password='3008001')
 
+conn = "postgresql://postgres:3008001@localhost/BackData"
 
