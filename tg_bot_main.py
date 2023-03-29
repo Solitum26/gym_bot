@@ -1,17 +1,16 @@
+import pandas as pd
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
 from aiogram.utils import executor
 from commands_text import *
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from keyboard import dictionary_of_menu
-from exercises import  *
 from datetime import date
 from FSM import FSMUser, FSMAutomatic, FSMContext
-from connect_to_SQL import connection
+from connect_to_SQL import *
 from psycopg2.sql import Literal
+from sqlalchemy import create_engine, text
 
-
-cursor = connection.cursor()
 TOKEN = '6284880447:AAHj24KgUb7NdxES-aIhXqOerghNbsw6cwM'
 storage = MemoryStorage()
 bot = Bot(token=TOKEN)
@@ -22,18 +21,34 @@ dp = Dispatcher(bot, storage=storage)
 async def start_message(message: types.Message):
     await message.answer(text=start_text, reply_markup=dictionary_of_menu['main_menu'])
 
+# Хендлер окна помощи
 @dp.message_handler(commands=['help'])
 async def start_message(message: types.Message):
     await message.answer(text=help_text)
 
-# выбор тренировки
+# Хендлер новой тренировки
 @dp.message_handler(commands=['new_train'])
 async def type_of_train(message: types.Message, state: FSMContext):
     await FSMAutomatic.muscular_group.set()
     await message.answer(text=add_new_train_text, reply_markup=dictionary_of_menu['muscular_menu'])
 
-# Хендлер спины и упражнений на спину
-@dp.message_handler(commands=['Спина', 'Грудь', 'Ноги', 'Плечи', 'Руки'], state=FSMAutomatic.muscular_group)
+# Хендлер просмотра БД
+@dp.message_handler(commands=['check_history'])
+async def query(message: types.Message):
+    try:
+        exercise_to_query = message.text.split()[1]
+        df = pd.read_sql_query(f"""
+        SELECT date, train_params
+        FROM exercises_data
+        WHERE exercise = '{exercise_to_query}' AND user_id = {message.from_id}
+        ORDER BY date""", conn, parse_dates=['date'])
+        await message.answer(df)
+    except Exception as e:
+        print(e)
+        await message.answer(text=f'Ошибка: {e}. Свяжитесь с разработчиком')
+
+# Хендлеры занесения данных в БД
+@dp.message_handler(commands=['Спина', 'Грудь', 'Плечи', 'Руки'], state=FSMAutomatic.muscular_group) ## НЕТ НОГ
 async def back(message: types.Message, state: FSMContext):
     async with state.proxy() as helping_data:
         helping_data['muscular'] = message.text[1:]
@@ -41,7 +56,7 @@ async def back(message: types.Message, state: FSMContext):
     await state.finish()
     await FSMUser.name_of_exs.set()
 
-@dp.message_handler(commands=back_ex, state=FSMUser.name_of_exs) ###### ИЗМЕНИТЬ КОМАНДЫ
+@dp.message_handler(state=FSMUser.name_of_exs)
 async def get_exercise_name(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['name_exercise'] = message.text[1:]
@@ -64,20 +79,20 @@ async def add_data_to_db(message: types.Message, state: FSMContext):
             if i != len(data['train_params']) - 1:
                 parsed_train_params += ', '
         parsed_train_params += '}'
-
+        cursor = connection.cursor()
         cursor.execute(f"""
-        INSERT INTO back_data (user_id, date, exercise, train_params)
+        INSERT INTO exercises_data (user_id, date, exercise, train_params)
         VALUES ({data['user_id']},
                 '{data['date']}', 
                 {Literal(data['name_exercise']).as_string(cursor)},
                 '{parsed_train_params}')""")
-
         connection.commit()
         cursor.close()
-        connection.close()
         await message.answer(text=accepted_text, reply_markup=dictionary_of_menu['main_menu'])
     except Exception as e:
-        await message.answer(text=f'Ошибка: {e}. Пиши шефу')
+        print(e)
+        await message.answer(text=f'Ошибка: {e}. Свяжитесь с разработчиком',
+                             reply_markup=dictionary_of_menu['muscular_menu'])
 
 
 
