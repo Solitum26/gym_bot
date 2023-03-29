@@ -10,10 +10,13 @@ from FSM import FSMUser, FSMAutomatic, FSMContext
 from connect_to_SQL import *
 from psycopg2.sql import Literal
 from sqlalchemy import create_engine, text
+import os
+from dotenv import load_dotenv, find_dotenv
 
-TOKEN = '6284880447:AAHj24KgUb7NdxES-aIhXqOerghNbsw6cwM'
+load_dotenv(find_dotenv())
+
 storage = MemoryStorage()
-bot = Bot(token=TOKEN)
+bot = Bot(os.getenv('TOKEN'))
 dp = Dispatcher(bot, storage=storage)
 
 # начальный экран
