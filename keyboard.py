@@ -12,7 +12,7 @@ list_of_mainmenu = [mainmenu_query,
                     mainmenu_help,
                     mainmenu_train]
 
-main_menu = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True) \
+main_menu = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False) \
                                 .row(*list_of_mainmenu)
 
 # меню выбора целевой группы
