@@ -6,9 +6,9 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemo
 # стартовое меню
 mainmenu_help = KeyboardButton('/help')
 mainmenu_train = KeyboardButton('/new_train')
-mainmenu_query = KeyboardButton('/check_history')
+#mainmenu_query = KeyboardButton('/check_history')
 
-list_of_mainmenu = [mainmenu_query,
+list_of_mainmenu = [#mainmenu_query,
                     mainmenu_help,
                     mainmenu_train]
 
@@ -44,12 +44,12 @@ list_of_back = [back_ex_1,
                 back_ex_4,
                 back_ex_5]
 
-back_menu = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True) \
+back_menu = ReplyKeyboardMarkup(resize_keyboard=False, one_time_keyboard=True) \
                                 .row(*list_of_back)
 # меню упражнений грудь
 chest_ex_1 = KeyboardButton('/Жим_лежа_горизонтальный_гриф')
 chest_ex_2 = KeyboardButton('/Жим_лежа_горизонтальный_гантели')
-chest_ex_3 = KeyboardButton('/Изоляция')
+chest_ex_3 = KeyboardButton('/Изоляция_грудь')
 chest_ex_4 = KeyboardButton('/Жим_Свенда')
 chest_ex_5 = KeyboardButton('/Брусья_отжимания')
 
