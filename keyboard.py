@@ -1,6 +1,15 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, InlineKeyboardButton, \
     InlineKeyboardMarkup
 
+# Inline KB
+inline_keyboard = InlineKeyboardMarkup(row_width=1)
+mainmenu_train1 = InlineKeyboardButton(text='Добавить упражнение', callback_data='/new_train')
+mainmenu_help1 = InlineKeyboardButton(text='Помощь', callback_data='/help')
+
+list_of_mainmenu1 = [mainmenu_train1, mainmenu_help1]
+inline_keyboard.add(*list_of_mainmenu1)
+
+
 
 
 # стартовое меню
@@ -13,7 +22,7 @@ list_of_mainmenu = [#mainmenu_query,
                     mainmenu_train]
 
 main_menu = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False) \
-                                .row(*list_of_mainmenu)
+                                .add(*list_of_mainmenu)
 
 # меню выбора целевой группы
 muscular_menu_chest = KeyboardButton('/Грудь')
@@ -29,7 +38,7 @@ list_of_muscular = [muscular_menu_back,
                     muscular_menu_chest]
 
 muscular_menu = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True) \
-                .row(*list_of_muscular)
+                .add(*list_of_muscular)
 
 # меню упражнений спина
 back_ex_1 = KeyboardButton('/Тяга_верхного_блока')
@@ -45,7 +54,7 @@ list_of_back = [back_ex_1,
                 back_ex_5]
 
 back_menu = ReplyKeyboardMarkup(resize_keyboard=False, one_time_keyboard=True) \
-                                .row(*list_of_back)
+                                .add(*list_of_back)
 # меню упражнений грудь
 chest_ex_1 = KeyboardButton('/Жим_лежа_горизонтальный_гриф')
 chest_ex_2 = KeyboardButton('/Жим_лежа_горизонтальный_гантели')
@@ -60,7 +69,7 @@ list_of_chest = [chest_ex_5,
                  chest_ex_1]
 
 chest_menu = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True) \
-                                .row(*list_of_chest)
+                                .add(*list_of_chest)
 
 
 # меню упражнений плечи
@@ -77,7 +86,7 @@ list_of_shoulders = [shoulders_ex_5,
                      shoulders_ex_1]
 
 shoulders_menu = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True) \
-                                    .row(*list_of_shoulders)
+                                    .add(*list_of_shoulders)
 
 # меню упражнений руки
 
@@ -92,7 +101,7 @@ list_of_arms = [arms_ex_4,
                 arms_ex_1]
 
 arms_menu = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True) \
-                                .row(*list_of_arms)
+                                .add(*list_of_arms)
 
 dictionary_of_menu = {'main_menu': main_menu,
                       'muscular_menu': muscular_menu,
@@ -100,3 +109,4 @@ dictionary_of_menu = {'main_menu': main_menu,
                       'Грудь': chest_menu,
                       'Руки': arms_menu,
                       'Плечи': shoulders_menu}
+
