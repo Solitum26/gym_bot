@@ -10,5 +10,10 @@ class FSMAutomatic(StatesGroup):
     muscular_group = State()
 
 class FSMRewriting(StatesGroup):
-    date_and_exercise_to_query = State()
+    date_to_rewrite = State()
+    exercise_to_rewrite = State()
+    ok_state = State()
     new_data_to_update = State()
+
+class FSHHistory(StatesGroup):
+    exercises_to_query = State()
