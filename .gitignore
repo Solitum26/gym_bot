@@ -1,6 +1,12 @@
 # created by virtualenv automatically
-/__pycache__/
-/Scripts/
+__pycache__/
+Scripts/
+include/
 '
 Lib/
 .env
+logs.txt
+procfile
+pyenv.cfg
+runtime.txt
+BackData.sql
