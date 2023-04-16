@@ -7,7 +7,7 @@ from aiogram.utils import executor
 from commands_text import *
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from keyboard import dictionary_of_menu_inline
-from datetime import date
+from datetime import date, timedelta
 from FSM import *
 from psycopg2.sql import Literal
 from sqlalchemy import create_engine, text
@@ -24,6 +24,12 @@ def get_connection():
                 user=f'{user}',
                 password=f'{password}')
     return connenction
+
+def validate_date(date):
+    date_list = date.split('-')
+    if len(date_list) != 3:
+        return False
+    return ''.join(date_list).isnumeric() and 1 <= int(date_list[1]) <= 31 and 1 <= int(date_list[2]) <= 12
 
 def validate_params(text: str):
     try:
@@ -54,13 +60,92 @@ dp = Dispatcher(bot, storage=storage)
 # начальный экран
 @dp.message_handler(commands=['start'])
 async def main_menu(message: types.Message):
-    await message.answer(text=start_text,reply_markup=dictionary_of_menu_inline['main_menu'])
+    await message.answer(text=start_text, reply_markup=dictionary_of_menu_inline['start_menu'])
 
+@dp.callback_query_handler(text='account')
+async def user_info(callback: types.CallbackQuery):
+    connection = get_connection()
+    cursor = connection.cursor()
+    cursor.execute(f"""
+    SELECT sub_end
+    FROM access_table
+    WHERE user_id = {callback.from_user.id}""")
+    sub_end = cursor.fetchone()
+    if sub_end:
+        status = 'Активна ✅'
+    else:
+        status = 'Неактивна ❌'
+    if status == 'Активна ✅':
+        await callback.message.answer(text=f'⭐ АККАУНТ ⭐ \n\nПодписка: {status}\nДата окончания: {sub_end[0]}',
+                                     reply_markup=dictionary_of_menu_inline['account_menu'])
+    else:
+        await callback.message.answer(text=f'⭐ АККАУНТ ⭐ \n\nПодписка: {status}\n',
+                                     reply_markup=dictionary_of_menu_inline['account_menu'])
+
+@dp.callback_query_handler(text='add_probe')
+async def add_probe_sub(callback: types.CallbackQuery):
+    connection = get_connection()
+    cursor = connection.cursor()
+    timestamp = timedelta(days=30)
+    cursor.execute(f"""
+    SELECT probe_sub
+    FROM access_table
+    WHERE user_id = {callback.from_user.id}""")
+    result = cursor.fetchone()
+    if result != None and result[0] == 1:
+        await callback.message.answer(text='❗ Вы уже воспользовались пробной подпиской')
+        return
+    try:
+        today = date.today()
+        connection = get_connection()
+        cursor = connection.cursor()
+        timestamp = timedelta(days=30)
+        cursor.execute(f"""
+        INSERT INTO access_table  VALUES ({callback.from_user.id}, '{today}', '{today + timestamp}', {1}) """)
+        connection.commit()
+        cursor.close()
+        connection.close()
+        await callback.message.answer(text=f'Подписка на {timestamp.days} дней успешно оформлена!',
+                                      reply_markup=dictionary_of_menu_inline['start_menu'])
+    except Exception as e:
+        print(e)
+        await callback.message.answer(text='❌ Ошибка. Вероятно, у вас уже есть активная подписка, проверьте свой аккаунт или свяжитесь с разработчиком')
+
+@dp.callback_query_handler(text='buy')
+async def buy_sub(callback: types.CallbackQuery):
+    await FSMBuy_sub.product.set()
+    await callback.message.answer(text=buy_text, reply_markup=dictionary_of_menu_inline['products'])
+"""
+@dp.callback_query_handler(text=['first_plan', 'second_plan', 'third_plan'])
+async def payment(callback: types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as buy_data:
+        buy_data['product'] = callback.data
+        print(buy_data['product'])
+    await state.finish()
+"""
 # Хендлер окна помощи
 @dp.callback_query_handler(text='help')
 async def help_message(callback: types.CallbackQuery):
     await callback.message.answer(text=help_text)
     await callback.answer()
+
+# Проверка подписки и вывод меню функций
+@dp.callback_query_handler(text='funcs')
+async def main(callback: types.CallbackQuery):
+    connection = get_connection()
+    cursor = connection.cursor()
+    cursor.execute(f"""
+    SELECT sub_end
+    FROM access_table
+    WHERE user_id = {callback.from_user.id}""")
+    end_sub_date = cursor.fetchone()
+    today = date.today()
+    if end_sub_date != None and today <= end_sub_date[0]:
+        await callback.message.answer(text=main_text, reply_markup=dictionary_of_menu_inline['main_menu'])
+    else:
+        await callback.message.answer(text='У вас нет активной подписки',
+                                      reply_markup=dictionary_of_menu_inline['start_menu'])
+
 
 # Хендлер новой тренировки
 @dp.callback_query_handler(text='Добавить упражнение')
@@ -91,6 +176,9 @@ async def get_exercise_name(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         data['name_exercise'] = callback.data
     await FSMUser.next()
+    if callback.data == 'cancel':
+        await cancel_handler(callback, state)
+        return
     f_string = callback.data.replace('_', ' ')
     choosen_exercise_text = f'Вы выбрали "{f_string}".' + '\n'
     await callback.message.reply(text=choosen_exercise_text + data_format,
@@ -141,7 +229,7 @@ async def cancel_handler(callback: types.CallbackQuery, state: FSMContext):
         return
     await state.finish()
     await callback.message.reply(text='✔️ Действие отменено')
-    await callback.message.answer(text=start_text, reply_markup=dictionary_of_menu_inline['main_menu'])
+    await callback.message.answer(text=start_text, reply_markup=dictionary_of_menu_inline['start_menu'])
     await callback.answer()
 
 # Хендлер перезаписи ошибчных значнений
@@ -154,7 +242,7 @@ async def init_state_for_rewriting(callback: types.CallbackQuery):
 
 @dp.message_handler(state=FSMRewriting.date_to_rewrite)
 async def get_exercise_query(message: types.Message, state: FSMContext):
-    if not ''.join(message.text.split('-')).isnumeric():
+    if not validate_date(message.text):
         await message.answer(text='❗ Не пройдена валидация. Пожалуйста, введите корректную дату.')
         return
     async with state.proxy() as new_data:
@@ -242,12 +330,12 @@ async def query(callback: types.CallbackQuery, state: FSMContext):
         if cursor.rowcount:
             table = from_db_cursor(cursor)
             await callback.message.answer(text=f'Таблица по {choosen_ex}: \n\n'f'```{table}```', parse_mode='Markdown')
-            await callback.message.answer(text=start_text,
+            await callback.message.answer(text=main_text,
                                           reply_markup=dictionary_of_menu_inline['main_menu'])
             await state.finish()
             await callback.answer()
         else:
-            await callback.message.answer(text=f'❗ В базе данных нет записей по упражнению {choosen_ex}; результирующая таблица пуста.')
+            await callback.message.answer(text=f'❗В базе данных нет записей по упражнению {choosen_ex}; результирующая таблица пуста.')
             await callback.answer()
     except Exception as e:
         await state.finish()

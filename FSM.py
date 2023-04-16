@@ -17,3 +17,6 @@ class FSMRewriting(StatesGroup):
 
 class FSHHistory(StatesGroup):
     exercises_to_query = State()
+
+class FSMBuy_sub(StatesGroup):
+    product = State()
