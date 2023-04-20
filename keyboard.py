@@ -133,11 +133,15 @@ ok = InlineKeyboardMarkup(row_width=1).add(ok_button, cancel_button)
 
 # Покупка
 products = InlineKeyboardMarkup(row_width=1)
-sub_button_three = InlineKeyboardButton(text='30 дней', callback_data='first_plan')
-sub_button_six = InlineKeyboardButton(text='60 дней', callback_data='second_plan')
-sub_button_nine = InlineKeyboardButton(text='90 дней', callback_data='third_plan')
+sub_button_three = InlineKeyboardButton(text='30 дней', callback_data='30')
+sub_button_six = InlineKeyboardButton(text='60 дней', callback_data='60')
+sub_button_nine = InlineKeyboardButton(text='90 дней', callback_data='90')
 
 products.add(sub_button_three, sub_button_six, sub_button_nine, cancel_button)
+
+payment_admin_menu = InlineKeyboardMarkup(row_width=1)
+decline_button = InlineKeyboardButton(text='Отклонить', callback_data='decline_sub')
+
 
 dictionary_of_menu_inline = {'start_menu': start_menu,
                              'main_menu': main_menu_inline,
@@ -150,4 +154,7 @@ dictionary_of_menu_inline = {'start_menu': start_menu,
                              'all_ex': all_exercises_menu,
                              'ok': ok,
                              'account_menu': account_menu,
-                             'products': products}
+                             'products': products,
+                             'payment_admin': payment_admin_menu
+                             }
+

@@ -6,8 +6,10 @@ class FSMUser(StatesGroup):
     name_of_exs = State()
     data = State()
 
+
 class FSMAutomatic(StatesGroup):
     muscular_group = State()
+
 
 class FSMRewriting(StatesGroup):
     date_to_rewrite = State()
@@ -15,8 +17,11 @@ class FSMRewriting(StatesGroup):
     ok_state = State()
     new_data_to_update = State()
 
+
 class FSHHistory(StatesGroup):
     exercises_to_query = State()
 
-class FSMBuy_sub(StatesGroup):
-    product = State()
+
+class BuySub(StatesGroup):
+    buying_state = State()
+    photo = State()
