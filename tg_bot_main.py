@@ -1,7 +1,7 @@
 import asyncio
 import os
 import random
-
+import pandas as pd
 import psycopg2
 from contextlib import suppress
 from aiogram import Bot, types
@@ -12,7 +12,7 @@ from aiogram.dispatcher.filters import Text
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from commands_text import *
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from keyboard import dictionary_of_menu_inline
+from keyboard import dictionary_of_menu_inline, cancel_button
 from datetime import date, timedelta
 from FSM import *
 from psycopg2.sql import Literal
@@ -54,6 +54,26 @@ def parsing_data(params_list: list):
     return parsed_train_params
 
 
+def new_kb(level):
+    new_kb_ = InlineKeyboardMarkup(row_width=1)
+    level = level
+    for k in all_exercises[level]:
+        new_button = InlineKeyboardButton(text=k.replace('_', ' '), callback_data=k)
+        new_kb_.add(new_button)
+    new_kb_.add(cancel_button)
+    if 0 < level < len(all_exercises) - 1:
+        prev = InlineKeyboardButton(text='<<', callback_data='<<')
+        next_ = InlineKeyboardButton(text='>>', callback_data='>>')
+        new_kb_.row(prev, next_)
+    elif level == 0:
+        next_ = InlineKeyboardButton(text='>>', callback_data='>>')
+        new_kb_.add(next_)
+    elif level == len(all_exercises) - 1:
+        prev = InlineKeyboardButton(text='<<', callback_data='<<')
+        new_kb_.add(prev)
+    return new_kb_
+
+
 load_dotenv(find_dotenv())
 database = os.getenv('database')
 user = os.getenv('user')
@@ -79,7 +99,6 @@ async def create_promo(message: types.Message):
         for key, value in promocodes.items():
             result += f'{key} - {value} дней' + '\n'
         await message.answer(text=f'Список существующих:\n{result}')
-
 
 
 @dp.message_handler(Text(startswith='!'))
@@ -121,13 +140,25 @@ async def get_promo(message: types.Message):
 @dp.message_handler(commands=['query'])
 async def admin_query(message: types.Message):
     if message.from_id == 779123467:
-        connection = get_connection()
-        cursor = connection.cursor()
-        cursor.execute(f"""{message.text.split('*')[1]}""")
-        connection.commit()
-        cursor.close()
-        connection.close()
-        await message.answer(text='Успешно')
+        try:
+            if '@' in message.text:
+                connection = get_connection()
+                cursor = connection.cursor()
+                cursor.execute(f"""{message.text.split('@')[-1]}""")
+                connection.commit()
+                cursor.close()
+                connection.close()
+                await message.answer(text='Успешно')
+            elif '#' in message.text:
+                connection = get_connection()
+                cursor = connection.cursor()
+                cursor.execute(f"""{message.text.split('#')[-1].strip()}""")
+                result = cursor.fetchall()
+                t = pd.DataFrame(result)
+                await message.answer(text=f'```{t}```', parse_mode='Markdown')
+        except Exception as e:
+            print(e)
+            await message.answer(text='Ошибка БД')
     else:
         await message.answer(text='Нет доступа')
 
@@ -148,11 +179,11 @@ async def user_info(callback: types.CallbackQuery):
     WHERE user_id = {callback.from_user.id}""")
     sub_end = cursor.fetchone()
     if sub_end:
-        status = 'Активна ✅'
+        status = '✅ Активна'
         await callback.message.answer(text=f'⭐ АККАУНТ ⭐ \n\nПодписка: {status}\nДата окончания: {sub_end[0]}',
                                       reply_markup=dictionary_of_menu_inline['account_menu'])
     else:
-        status = 'Неактивна ❌'
+        status = '❌ Неактивна'
         await callback.message.answer(text=f'⭐ АККАУНТ ⭐ \n\nПодписка: {status}\n',
                                       reply_markup=dictionary_of_menu_inline['account_menu'])
     cursor.close()
@@ -207,6 +238,7 @@ async def add_probe_sub(callback: types.CallbackQuery):
                 text='❌ Ошибка. Вероятно, у вас уже есть активная подписка, проверьте свой аккаунт или свяжитесь с разработчиком')
     else:
         await callback.message.answer(text='❗ Вы уже воспользовались пробной подпиской')
+        await callback.answer()
         return
     await callback.answer()
 
@@ -228,10 +260,9 @@ async def payment(callback: types.CallbackQuery, state: FSMContext):
     kb_test = InlineKeyboardMarkup(row_width=1)
     accept_button = InlineKeyboardButton(text=f'Принять',
                                          callback_data=f'give_sub {user_id} {callback.data} {chat_id}')
-    decline_button = InlineKeyboardButton(text='Отклонить', callback_data=f'decline_sub {chat_id}')
+    decline_button = InlineKeyboardButton(text='Отклонить', callback_data=f'decline_sub {chat_id} {user_id}')
     kb_test.add(accept_button, decline_button)
     dict_of_kb_status[user_id] = {'kb': kb_test}
-    #dictionary_of_menu_inline['payment_admin'].add(accept_button, decline_button)
     await callback.message.answer(text=f'Выбрано: {callback.data} дней\nСтоимость: {dict_of_price[callback.data]}\n' + buy_text,
                                   reply_markup=dictionary_of_menu_inline['cancel'])
     await callback.answer()
@@ -247,10 +278,13 @@ async def get_photo(message: types.Message, state: FSMContext):
                            text=f'⚡ НОВЫЙ ПЛАТЕЖ ⚡\nПользователь -  {user_name}\nПродукт - {kostil[user_id]["plan"]} дней')
     kostil[message.from_id]['message_id'] = message.message_id
     await message.send_copy(chat_id=779123467, reply_markup=dict_of_kb_status[user_id]['kb'])
-    print(dict_of_kb_status)
+    await state.finish()
     with suppress(MessageNotModified):
         for k in range(1000):
-            await asyncio.sleep(5)
+            if kostil[message.from_id].get('clock'):
+                kostil.pop(user_id)
+                break
+            await asyncio.sleep(4)
             j = 0
             for i in clocks:
                 await asyncio.sleep(1.2)
@@ -259,22 +293,20 @@ async def get_photo(message: types.Message, state: FSMContext):
                 if j == 6:
                     j = 0
                 if kostil[int(message.from_id)].get('clock'):
-                    kostil.pop(user_id)
+                    await bot.edit_message_text(
+                        text=wait_status_sub + '\n' + '- ' * 35 + f'\nОбработка завершена! ✅',
+                        chat_id=message.chat.id, message_id=message.message_id + 1)
                     break
                 j += 1
-    await state.finish()
 
 
 @dp.callback_query_handler(Text(contains="give_sub"))
 async def give_sub_to_user(callback: types.CallbackQuery):
-    print('внутри')
-    #dictionary_of_menu_inline['payment_admin'].clean_all()
     parsed_callback = callback.data.split()
     user_id = int(parsed_callback[1])
     plan = parsed_callback[2]
     chat_id = parsed_callback[3]
     kostil[user_id]['clock'] = 1
-    print(kostil)
     try:
         connection = get_connection()
         cursor = connection.cursor()
@@ -304,16 +336,15 @@ async def give_sub_to_user(callback: types.CallbackQuery):
         print(e)
     await callback.message.delete()
     await callback.message.answer(text='⬆️ Статус: принято')
-    #await bot.edit_message_text(message_id=kostil[int(user_id)]['message_id'], text='ssss', chat_id=779123467)
     await callback.answer()
 
 
 @dp.callback_query_handler(Text(contains='decline_sub'))
 async def decline_user_sub(callback: types.CallbackQuery):
-    print(kostil)
     await callback.message.delete()
-    dictionary_of_menu_inline['payment_admin'].clean_all()
-    chat_id = callback.data.split()[1]
+    chat_id = int(callback.data.split()[1])
+    user_id = int(callback.data.split()[2])
+    kostil[user_id]['clock'] = 1
     await bot.send_message(chat_id=chat_id, text=sub_declined_text,
                            reply_markup=dictionary_of_menu_inline['start_menu'])
     await callback.message.answer(text='⬆️ Статус: отклонен')
@@ -343,6 +374,7 @@ async def main(callback: types.CallbackQuery):
     else:
         await callback.message.answer(text='У вас нет активной подписки',
                                       reply_markup=dictionary_of_menu_inline['start_menu'])
+    await callback.answer()
 
 
 # Хендлер новой тренировки
@@ -430,7 +462,7 @@ async def cancel_handler(callback: types.CallbackQuery, state: FSMContext):
     if current_state is None:
         return
     await state.finish()
-    await callback.message.reply(text='✔️ Действие отменено')
+    await callback.message.reply(text='✅ Действие отменено')
     await callback.message.answer(text=start_text, reply_markup=dictionary_of_menu_inline['start_menu'])
     await callback.answer()
 
@@ -452,10 +484,13 @@ async def get_exercise_query(message: types.Message, state: FSMContext):
     async with state.proxy() as new_data:
         new_data['date'] = message.text
     await FSMRewriting.next()
-    await message.answer(text='Выберите упражнение:', reply_markup=dictionary_of_menu_inline['all_ex'])
+    kb = new_kb(0)
+    pages[message.from_id] = {}
+    pages[message.from_id]['level'] = 0
+    await message.answer(text='Выберите упражнение:', reply_markup=kb)
 
 
-@dp.callback_query_handler(state=FSMRewriting.exercise_to_rewrite)
+@dp.callback_query_handler(text=all_ex, state=FSMRewriting.exercise_to_rewrite)
 async def get_exercise(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as new_data:
         new_data['exercise'] = callback.data
@@ -470,7 +505,7 @@ async def get_exercise(callback: types.CallbackQuery, state: FSMContext):
     date = new_data['date']
     exercise = new_data['exercise'].replace('_', ' ')
     if not cursor.fetchone()[0]:
-        await callback.message.answer(text=f'❗ По дате {date} и упражнению {exercise} нет записей. Попробуйте ввести другие данные.')
+        await callback.message.answer(text=f'❗ По дате {date} и упражнению {exercise} нет записей. Попробуйте выбрать другие данные.')
         await callback.answer()
         return
     await FSMRewriting.next()
@@ -508,25 +543,43 @@ async def rewrite_row(message: types.Message, state: FSMContext):
         connection.commit()
         cursor.close()
         connection.close()
-        await message.reply(text='✔️ Данные обновлены!', reply_markup=dictionary_of_menu_inline['main_menu'])
+        await message.reply(text='✅ Данные обновлены!', reply_markup=dictionary_of_menu_inline['main_menu'])
     except Exception as e:
         print(e)
         await message.answer(text=f'❌ Ошибка. Свяжитесь с разработчиком')
 
 
+@dp.callback_query_handler(text=['<<', '>>'], state=[FSHHistory.exercises_to_query, FSMRewriting.exercise_to_rewrite])
+async def paging(callback: types.CallbackQuery):
+    if callback.data == '>>':
+        pages[callback.from_user.id]['level'] += 1
+        kb = new_kb(pages[callback.from_user.id]['level'])
+        with suppress(MessageNotModified):
+            await callback.message.edit_reply_markup(reply_markup=kb)
+    if callback.data == '<<':
+        pages[callback.from_user.id]['level'] -= 1
+        kb = new_kb(pages[callback.from_user.id]['level'])
+        with suppress(MessageNotModified):
+            await callback.message.edit_reply_markup(reply_markup=kb)
+
+
 # Хендлер просмотра БД
-@dp.callback_query_handler(text='history')
+@dp.callback_query_handler(text=['history'])
 async def get_exercise(callback: types.CallbackQuery):
-    await FSHHistory.exercises_to_query.set()
-    await callback.message.reply(text='Выберите упражнение, по которому будет осуществлен запрос к БД:',
-                                 reply_markup=dictionary_of_menu_inline['all_ex'])
+    pages[callback.from_user.id] = {}
+    pages[callback.from_user.id]['level'] = 0
+    if callback.data == 'history':
+        kb = new_kb(0)
+        await callback.message.reply(text='Выберите упражнение, по которому будет осуществлен запрос к БД:',
+                                     reply_markup=kb)
     await callback.answer()
+    await FSHHistory.exercises_to_query.set()
 
 
-@dp.callback_query_handler(state=FSHHistory.exercises_to_query)
+@dp.callback_query_handler(text=all_ex, state=FSHHistory.exercises_to_query)
 async def query(callback: types.CallbackQuery, state: FSMContext):
+
     try:
-        exercise_to_query = callback.data
         connection = get_connection()
         cursor = connection.cursor()
         cursor.execute(f"""
@@ -542,8 +595,9 @@ async def query(callback: types.CallbackQuery, state: FSMContext):
                                           reply_markup=dictionary_of_menu_inline['main_menu'])
             await state.finish()
             await callback.answer()
+            pages.pop(callback.from_user.id)
         else:
-            await callback.message.answer(text=f'❗В базе данных нет записей по упражнению {chosen_ex}; результирующая таблица пуста.')
+            await callback.message.answer(text=f'❗ В базе данных нет записей по упражнению {chosen_ex}; результирующая таблица пуста.')
             await callback.answer()
     except Exception as e:
         await state.finish()
@@ -551,6 +605,7 @@ async def query(callback: types.CallbackQuery, state: FSMContext):
         await callback.message.answer(text='❌ Что-то пошло не так. Перепроверьте запрос или свяжитесь с разработчиком.',
                                       reply_markup=dictionary_of_menu_inline['main_menu'])
 
-#asyncio.run(asyncio.gather(*[executor.start_polling(dp, skip_updates=True), executor.start_polling(dp_admin,skip_updates=True)]))
 
+#asyncio.gather(*[executor.start_polling(dp, skip_updates=True), executor.start_polling(dp_admin, skip_updates=False)])
 executor.start_polling(dp, skip_updates=True)
+

@@ -10,3 +10,4 @@ procfile
 pyenv.cfg
 runtime.txt
 BackData.sql
+venv/

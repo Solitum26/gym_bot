@@ -118,14 +118,18 @@ arms_menu_in = InlineKeyboardMarkup(row_width=1) \
 cancel_kb = InlineKeyboardMarkup(row_width=1) \
                                 .add(cancel_button)
 
+#
+
+
 # меню всех упражнений
+"""
 all_exercises_menu = InlineKeyboardMarkup(row_width=3)
 for i in all_exercises:
     name = i.replace('_', ' ')
     button = InlineKeyboardButton(text=name, callback_data=i)
     all_exercises_menu.add(button)
-
 all_exercises_menu.add(cancel_button)
+"""
 # подтверждение перезаписи
 
 ok_button = InlineKeyboardButton(text='ОК', callback_data='ok')
@@ -151,7 +155,7 @@ dictionary_of_menu_inline = {'start_menu': start_menu,
                              'Руки': arms_menu_in,
                              'Плечи': shoulders_menu_in,
                              'cancel': cancel_kb,
-                             'all_ex': all_exercises_menu,
+                             #'all_ex': all_exercises_menu,
                              'ok': ok,
                              'account_menu': account_menu,
                              'products': products,
