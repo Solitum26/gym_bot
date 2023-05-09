@@ -1,6 +1,8 @@
 import asyncio
 import os
 import random
+
+import aiogram.utils.exceptions
 import pandas as pd
 import psycopg2
 from contextlib import suppress
@@ -38,9 +40,9 @@ def validate_date(date_string):
 
 def validate_params(text: str):
     try:
-        boolean_flag = ''.join(text.replace('-', ', ').split(', ')).isnumeric()
+        boolean_flag = ''.join(text.replace('-', ', ').replace('.', ', ').split(', ')).isnumeric()
         return boolean_flag
-    except:
+    except Exception:
         return False
 
 
@@ -55,7 +57,7 @@ def parsing_data(params_list: list):
 
 
 def new_kb(level):
-    new_kb_ = InlineKeyboardMarkup(row_width=1)
+    new_kb_ = InlineKeyboardMarkup(row_width=0.5)
     level = level
     for k in all_exercises[level]:
         new_button = InlineKeyboardButton(text=k.replace('_', ' '), callback_data=k)
@@ -78,13 +80,13 @@ load_dotenv(find_dotenv())
 database = os.getenv('database')
 user = os.getenv('user')
 password = os.getenv('password')
-loop_bot = asyncio.new_event_loop()
+#loop_bot = asyncio.new_event_loop()
 bot = Bot(os.getenv('TOKEN'))
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
-loop_admin_bot = asyncio.new_event_loop()
-admin_bot = Bot(os.getenv('ADMIN_BOT'))
-dp_admin = Dispatcher(admin_bot, loop=loop_admin_bot)
+#loop_admin_bot = asyncio.new_event_loop()
+#admin_bot = Bot(os.getenv('ADMIN_BOT'))
+#dp_admin = Dispatcher(admin_bot, loop=loop_admin_bot)
 
 
 @dp.message_handler(commands=['create_promo'])
@@ -94,11 +96,33 @@ async def create_promo(message: types.Message):
         import random
         new_promocode = '!' + ''.join(random.sample(ascii_letters + digits, k=8))
         promocodes[new_promocode] = message.text.split()[1]
-        await message.answer(text=f'Новый промокод - {new_promocode}')
+        await message.answer(text=new_promocode)
         result = ''
         for key, value in promocodes.items():
             result += f'{key} - {value} дней' + '\n'
         await message.answer(text=f'Список существующих:\n{result}')
+
+
+@dp.message_handler(commands='see_promos')
+async def see_promos(message: types.Message):
+    if message.from_id == 779123467:
+        try:
+            promo = ''
+            for key, value in promocodes.items():
+                promo += f'{key} - {value}\n'
+            await message.answer(text=promo)
+        except aiogram.utils.exceptions.MessageTextIsEmpty:
+            await message.answer(text='Нет промокодов')
+
+
+@dp.message_handler(commands='clear_promos')
+async def clear_promos(message: types.Message):
+    if message.from_id == 779123467:
+        try:
+            promocodes.clear()
+            await message.answer(text='Очищено')
+        except:
+            await message.answer(text='Нет активных промокодов')
 
 
 @dp.message_handler(Text(startswith='!'))
@@ -211,12 +235,13 @@ async def add_probe_sub(callback: types.CallbackQuery):
             connection.commit()
             cursor.close()
             connection.close()
-            await callback.message.answer(text=f'Подписка на {timestamp.days} дней успешно оформлена!',
+            await callback.message.answer(text=f'🔓 Подписка на {timestamp.days} дней успешно оформлена!',
                                           reply_markup=dictionary_of_menu_inline['start_menu'])
         except Exception as e:
             print(e)
             await callback.message.answer(
-                text='❌ Ошибка. Вероятно, у вас уже есть активная подписка, проверьте свой аккаунт или свяжитесь с разработчиком')
+                text='❌ Ошибка. Вероятно, у вас уже есть активная подписка, проверьте свой аккаунт или свяжитесь с разработчиком'
+            )
     elif result[1] == 0:
         try:
             today = date.today()
@@ -230,7 +255,7 @@ async def add_probe_sub(callback: types.CallbackQuery):
             connection.commit()
             cursor.close()
             connection.close()
-            await callback.message.answer(text=f'Подписка на {timestamp.days} дней успешно оформлена!',
+            await callback.message.answer(text=f'🔓 Подписка на {timestamp.days} дней успешно оформлена!',
                                           reply_markup=dictionary_of_menu_inline['start_menu'])
         except Exception as e:
             print(e)
@@ -263,7 +288,7 @@ async def payment(callback: types.CallbackQuery, state: FSMContext):
     decline_button = InlineKeyboardButton(text='Отклонить', callback_data=f'decline_sub {chat_id} {user_id}')
     kb_test.add(accept_button, decline_button)
     dict_of_kb_status[user_id] = {'kb': kb_test}
-    await callback.message.answer(text=f'Выбрано: {callback.data} дней\nСтоимость: {dict_of_price[callback.data]}\n' + buy_text,
+    await callback.message.answer(text=f'📅 Выбрано: {callback.data} дней\n\n💵 Стоимость: {dict_of_price[callback.data]} руб.\n\n' + buy_text,
                                   reply_markup=dictionary_of_menu_inline['cancel'])
     await callback.answer()
     await BuySub.next()
@@ -280,15 +305,15 @@ async def get_photo(message: types.Message, state: FSMContext):
     await message.send_copy(chat_id=779123467, reply_markup=dict_of_kb_status[user_id]['kb'])
     await state.finish()
     with suppress(MessageNotModified):
+        await asyncio.sleep(4)
         for k in range(1000):
             if kostil[message.from_id].get('clock'):
                 kostil.pop(user_id)
                 break
-            await asyncio.sleep(4)
             j = 0
             for i in clocks:
                 await asyncio.sleep(1.2)
-                await bot.edit_message_text(text=wait_status_sub + '\n' + '- ' * 35 + f'\n{i} Получение статуса платежа' + '......'[:j],
+                await bot.edit_message_text(text=wait_status_sub + '\n' + '- ' * 35 + f'\n{i} Получение статуса платежа' + '........'[:j],
                                             chat_id=message.chat.id, message_id=message.message_id + 1)
                 if j == 6:
                     j = 0
@@ -300,7 +325,7 @@ async def get_photo(message: types.Message, state: FSMContext):
                 j += 1
 
 
-@dp.callback_query_handler(Text(contains="give_sub"))
+@dp.callback_query_handler(Text(contains='give_sub'))
 async def give_sub_to_user(callback: types.CallbackQuery):
     parsed_callback = callback.data.split()
     user_id = int(parsed_callback[1])
@@ -387,7 +412,7 @@ async def type_of_train(callback: types.CallbackQuery, state: FSMContext):
 
 
 # Хендлеры занесения данных в БД
-@dp.callback_query_handler(text=['Спина', 'Грудь', 'Плечи', 'Руки'], state=FSMAutomatic.muscular_group) ## НЕТ НОГ
+@dp.callback_query_handler(text=['Спина', 'Грудь', 'Плечи', 'Руки', 'Ноги'], state=FSMAutomatic.muscular_group)
 async def func_for_automatic_menu(callback: types.CallbackQuery, state: FSMContext):
     """
     Function for automatic determination next menu based on command by user
@@ -412,7 +437,7 @@ async def get_exercise_name(callback: types.CallbackQuery, state: FSMContext):
         await cancel_handler(callback, state)
         return
     f_string = callback.data.replace('_', ' ')
-    choosen_exercise_text = f'Вы выбрали "{f_string}".' + '\n'
+    choosen_exercise_text = f'Вы выбрали "{f_string}".' + '\n\n'
     await callback.message.reply(text=choosen_exercise_text + data_format,
                                  reply_markup=dictionary_of_menu_inline['cancel'])
     await callback.answer()
@@ -578,7 +603,6 @@ async def get_exercise(callback: types.CallbackQuery):
 
 @dp.callback_query_handler(text=all_ex, state=FSHHistory.exercises_to_query)
 async def query(callback: types.CallbackQuery, state: FSMContext):
-
     try:
         connection = get_connection()
         cursor = connection.cursor()
@@ -606,6 +630,5 @@ async def query(callback: types.CallbackQuery, state: FSMContext):
                                       reply_markup=dictionary_of_menu_inline['main_menu'])
 
 
-#asyncio.gather(*[executor.start_polling(dp, skip_updates=True), executor.start_polling(dp_admin, skip_updates=False)])
 executor.start_polling(dp, skip_updates=True)
 

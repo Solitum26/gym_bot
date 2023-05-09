@@ -40,6 +40,7 @@ list_of_muscular_menu_inline = [muscular_menu_chest_inline,
                                 muscular_menu_back_inline,
                                 muscular_menu_shoulders_inline,
                                 muscular_menu_arms_inline,
+                                muscular_menu_legs_inline,
                                 cancel_button]
 
 muscular_menu_inline.add(*list_of_muscular_menu_inline)
@@ -50,12 +51,14 @@ back_ex_2_in = InlineKeyboardButton(text='Тяга горизонтальног�
 back_ex_3_in = InlineKeyboardButton(text='Пуловер', callback_data='Пуловер')
 back_ex_4_in = InlineKeyboardButton(text='Тяга гантели к поясу', callback_data='Тяга_гантели_к_поясу')
 back_ex_5_in = InlineKeyboardButton(text='Т-гриф', callback_data='Т-гриф')
+back_ex_6_in = InlineKeyboardButton(text='Становая тяга', callback_data='Становая_тяга')
 
 list_of_back_in = [back_ex_1_in,
                    back_ex_2_in,
                    back_ex_3_in,
                    back_ex_4_in,
                    back_ex_5_in,
+                   back_ex_6_in,
                    cancel_button]
 
 back_menu_in = InlineKeyboardMarkup(row_width=1) \
@@ -111,8 +114,18 @@ list_of_arms_in = [arms_ex_4_in,
 
 arms_menu_in = InlineKeyboardMarkup(row_width=1) \
                                 .add(*list_of_arms_in)
-
-
+# ноги
+legs_ex_1 = InlineKeyboardButton(text='Присед', callback_data='Присед')
+legs_ex_2 = InlineKeyboardButton(text='Болгарские выпады', callback_data='Болгарские_выпады')
+legs_ex_3 = InlineKeyboardButton(text='Разгибания ног', callback_data='Разгибания_ног')
+legs_ex_4 = InlineKeyboardButton(text='Сгибания ног', callback_data='Сгибания_ног')
+legs_menu = InlineKeyboardMarkup(row_width=1)
+list_of_legs = [legs_ex_1,
+                legs_ex_2,
+                legs_ex_3,
+                legs_ex_4,
+                cancel_button]
+legs_menu.add(*list_of_legs)
 # Меню отмены
 
 cancel_kb = InlineKeyboardMarkup(row_width=1) \
@@ -154,6 +167,7 @@ dictionary_of_menu_inline = {'start_menu': start_menu,
                              'Грудь': chest_menu_in,
                              'Руки': arms_menu_in,
                              'Плечи': shoulders_menu_in,
+                             'Ноги': legs_menu,
                              'cancel': cancel_kb,
                              #'all_ex': all_exercises_menu,
                              'ok': ok,
