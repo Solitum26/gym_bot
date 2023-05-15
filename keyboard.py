@@ -67,7 +67,7 @@ back_menu_in = InlineKeyboardMarkup(row_width=1) \
 # Упражнения грудь
 chest_ex_1_in = InlineKeyboardButton(text='Жим лежа горизонтальный гриф', callback_data='Жим_лежа_горизонтальный_гриф')
 chest_ex_2_in = InlineKeyboardButton(text='Жим лежа горизонтальный гантели', callback_data='Жим_лежа_горизонтальный_гантели')
-chest_ex_3_in = InlineKeyboardButton(text='Изоляция грудь', callback_data='Изоляция_грудь')
+chest_ex_3_in = InlineKeyboardButton(text='Изоляция', callback_data='Изоляция_грудь')
 chest_ex_4_in = InlineKeyboardButton(text='Жим Cвенда', callback_data='Жим_Свенда')
 chest_ex_5_in = InlineKeyboardButton(text='Брусья отжимания', callback_data='Брусья_отжимания')
 chest_ex_6_in = InlineKeyboardButton(text='Жим гантелей под углом', callback_data='Жим_гантелей_под_углом')

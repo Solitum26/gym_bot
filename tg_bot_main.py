@@ -76,6 +76,20 @@ def new_kb(level):
     return new_kb_
 
 
+def check_sub(callback):
+    connection = get_connection()
+    cursor = connection.cursor()
+    cursor.execute(f"""
+        SELECT sub_end
+        FROM access_data
+        WHERE user_id = {callback.from_user.id}""")
+    end_sub_date = cursor.fetchone()
+    today = date.today()
+    if end_sub_date is not None and today <= end_sub_date[0]:
+        return True
+    else:
+        return False
+
 load_dotenv(find_dotenv())
 database = os.getenv('database')
 user = os.getenv('user')
@@ -229,7 +243,7 @@ async def add_probe_sub(callback: types.CallbackQuery):
             today = date.today()
             connection = get_connection()
             cursor = connection.cursor()
-            timestamp = timedelta(days=30)
+            timestamp = timedelta(days=15)
             cursor.execute(f"""
             INSERT INTO access_data VALUES ({callback.from_user.id}, '{today}', '{today + timestamp}', {1}) """)
             connection.commit()
@@ -247,7 +261,7 @@ async def add_probe_sub(callback: types.CallbackQuery):
             today = date.today()
             connection = get_connection()
             cursor = connection.cursor()
-            timestamp = timedelta(days=30)
+            timestamp = timedelta(days=15)
             cursor.execute(f"""
             UPDATE access_data
             SET (sub_start, sub_end, probe_sub) = ('{today}', '{result[0] + timestamp}', {1})
@@ -289,7 +303,7 @@ async def payment(callback: types.CallbackQuery, state: FSMContext):
     kb_test.add(accept_button, decline_button)
     dict_of_kb_status[user_id] = {'kb': kb_test}
     await callback.message.answer(text=f'📅 Выбрано: {callback.data} дней\n\n💵 Стоимость: {dict_of_price[callback.data]} руб.\n\n' + buy_text,
-                                  reply_markup=dictionary_of_menu_inline['cancel'])
+                                  reply_markup=dictionary_of_menu_inline['cancel'], parse_mode='Markdown')
     await callback.answer()
     await BuySub.next()
 
@@ -405,6 +419,10 @@ async def main(callback: types.CallbackQuery):
 # Хендлер новой тренировки
 @dp.callback_query_handler(text='Добавить упражнение')
 async def type_of_train(callback: types.CallbackQuery, state: FSMContext):
+    if not check_sub(callback):
+        await callback.message.answer(text='У вас нет активной подписки',
+                                      reply_markup=dictionary_of_menu_inline['start_menu'])
+        return
     await FSMAutomatic.muscular_group.set()
     await callback.message.answer(text=add_new_train_text,
                                   reply_markup=dictionary_of_menu_inline['muscular_menu'])
@@ -496,6 +514,10 @@ async def cancel_handler(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query_handler(text='rewrite')
 async def init_state_for_rewriting(callback: types.CallbackQuery):
     """Init 1st state and get data to rewrite"""
+    if not check_sub(callback):
+        await callback.message.answer(text='У вас нет активной подписки',
+                                      reply_markup=dictionary_of_menu_inline['start_menu'])
+        return
     await FSMRewriting.date_to_rewrite.set()
     await callback.message.reply(text=rewriting_text_date, reply_markup=dictionary_of_menu_inline['cancel'])
     await callback.answer()
@@ -591,6 +613,10 @@ async def paging(callback: types.CallbackQuery):
 # Хендлер просмотра БД
 @dp.callback_query_handler(text=['history'])
 async def get_exercise(callback: types.CallbackQuery):
+    if not check_sub(callback):
+        await callback.message.answer(text='У вас нет активной подписки',
+                                      reply_markup=dictionary_of_menu_inline['start_menu'])
+        return
     pages[callback.from_user.id] = {}
     pages[callback.from_user.id]['level'] = 0
     if callback.data == 'history':
